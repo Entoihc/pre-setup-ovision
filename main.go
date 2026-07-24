@@ -8,8 +8,23 @@ import (
 )
 
 
+type Consumer struct {
+	Name string
+	NumDote string 
+
+}
+
+type Device struct{
+	Mac string `json:"mac_eth"`
+	Serial string
+	CommonName string
+	Name string
+}
+
 
 func main() {
+
+
 
 	// Конфиг
 	IP := "192.168.91.43"
@@ -18,6 +33,13 @@ func main() {
 	pathStandBy := "icon-waiting.png"
 //	pathWait := "wait.png"
 	baseURL := fmt.Sprintf("http://%s:%s", IP, portPanel)
+
+	var curretDevice Device
+
+	shopper := Consumer {
+		Name: "t2",
+		NumDote: "120987",
+	}
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -37,12 +59,36 @@ func main() {
 		return
 	}
 
-	// Не рекомендуется печатать токены полностью в реальном приложении.
-	fmt.Printf("Access token: %s...\n", tokenAuth.AccessToken)
-	fmt.Printf("Refresh token: %s...\n", tokenAuth.RefreshToken)
+	err = getInfoDevice(ctx, client, baseURL, tokenAuth.AccessToken, &curretDevice)
+	if err != nil {
+		fmt.Printf("fail get info device: %w", err)
+		return
+	}
+
+	err = getDeviceName(shopper, &curretDevice)
+	if err != nil {
+		fmt.Printf("fail get info device: %w", err)
+		return
+	}
+
+	fmt.Printf("Name is: %s\n", curretDevice.CommonName)
 
 
-    _, err = uploadStandbyAsset (ctx, client, baseURL, tokenAuth.AccessToken, pathStandBy)
+	payload := RemoteTransactionRequest {
+		Enabled: true,
+		DeviceName: curretDevice.Name,
+		DeviceNameIsHostName: false,
+		PingURL: "",
+		TimePing: 3,
+	}
+
+	_, err = sendRemoteTransaction(ctx, client, baseURL, tokenAuth.AccessToken, payload)
+	if err != nil {
+		fmt.Printf("Ошибка перевода в режим внешнего управления: %v\n", err)
+		return
+	}
+
+	_, err = uploadStandbyAsset(ctx, client, baseURL, tokenAuth.AccessToken, pathStandBy)
 	if err != nil {
 		fmt.Printf("Ошибка загрузки изображения standBy: %v\n", err)
 		return

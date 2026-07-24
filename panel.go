@@ -23,18 +23,14 @@ type RemoteTransactionRequest struct {
 	TimePing             int    `json:"timePing"`
 }
 
-func sendRemoteTransaction(
-	ctx context.Context,
-	client *http.Client,
-	url string,
-	accessToken string,
-	payload RemoteTransactionRequest,
-) ([]byte, error) {
+//Настроить режим внешнего распознавания
+func sendRemoteTransaction(ctx context.Context, client *http.Client, baseURL string, accessToken string, payload RemoteTransactionRequest) ([]byte, error) {
 	requestBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("encode request: %w", err)
 	}
 
+	url := fmt.Sprintf("%s%s", baseURL, "/pipelineomini/remote_transaction")
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
@@ -47,7 +43,7 @@ func sendRemoteTransaction(
 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", accessToken)
+	req.Header.Set("Authorization", bearerToken(accessToken))
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -71,15 +67,83 @@ func sendRemoteTransaction(
 	return responseBody, nil
 }
 
+func getInfoDevice(ctx context.Context, client *http.Client, baseURL string, accessToken string, device *Device) error {
+	url := fmt.Sprintf("%s%s", baseURL, "/get_hardware" )
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		url,
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("create upload request: %w", err)
+	}
 
-//Загрзить фото для standby режима
-func uploadStandbyAsset(
-	ctx context.Context,
-	client *http.Client,
-	baseURL string,
-	accessToken string,
-	filePath string,
-) ([]byte, error) {
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", bearerToken(accessToken))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send upload request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return fmt.Errorf("read upload response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf(
+			"get hardware failed: status=%s, body=%s",
+			resp.Status,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
+
+	
+	if err = json.Unmarshal(responseBody, device); err != nil {
+		return fmt.Errorf( 
+			"parse get hardware response: %w; body=%s", 
+			err, 
+			strings.TrimSpace(string(responseBody)), 
+		)
+	}
+
+	return nil
+}
+
+func getDeviceName(shopper Consumer, device *Device) error {
+	
+	check := false 
+	
+	if shopper.Name == "t2" {
+		device.Name = shopper.NumDote
+
+		cutMAC := strings.ReplaceAll(device.Mac, ":", "")
+		if len(cutMAC) < 6 {
+			return fmt.Errorf("некорректный MAC-адрес: %s", device.Mac)
+		}
+		cutMAC = strings.ToUpper(cutMAC[len(cutMAC)-6:])
+		device.CommonName = fmt.Sprintf("BT-%s-%s", cutMAC, shopper.NumDote)
+		check = true
+	}
+
+	if shopper.Name == "ovision" {
+		device.Name = device.Mac
+		check = true
+	}
+	
+	if !check {
+		return(fmt.Errorf("Такого клиента не существует: %s", shopper.Name))
+	}
+
+	return nil
+}
+
+
+//Загрузить фото для standby режима
+func uploadStandbyAsset(ctx context.Context, client *http.Client, baseURL string, accessToken string, filePath string) ([]byte, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("open file %q: %w", filePath, err)
