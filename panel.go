@@ -6,15 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
-	"strings"
 	"mime/multipart"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
-
-// Задать параметры для внешнего распознавания 
+// Задать параметры для внешнего распознавания
 type RemoteTransactionRequest struct {
 	Enabled              bool   `json:"enabled"`
 	DeviceName           string `json:"deviceName"`
@@ -23,14 +23,14 @@ type RemoteTransactionRequest struct {
 	TimePing             int    `json:"timePing"`
 }
 
-//Настроить режим внешнего распознавания
-func sendRemoteTransaction(ctx context.Context, client *http.Client, baseURL string, accessToken string, payload RemoteTransactionRequest) ([]byte, error) {
+// Настроить режим внешнего распознавания
+func setRemoteTransactionParameters(ctx context.Context, client *http.Client, baseURL Url, accessToken string, payload RemoteTransactionRequest) ([]byte, error) {
 	requestBody, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("encode request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s%s", baseURL, "/pipelineomini/remote_transaction")
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/pipelineomini/remote_transaction")
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
@@ -67,8 +67,8 @@ func sendRemoteTransaction(ctx context.Context, client *http.Client, baseURL str
 	return responseBody, nil
 }
 
-func getInfoDevice(ctx context.Context, client *http.Client, baseURL string, accessToken string, device *Device) error {
-	url := fmt.Sprintf("%s%s", baseURL, "/get_hardware" )
+func getInfoDevice(ctx context.Context, client *http.Client, baseURL Url, accessToken string, device *Device) error {
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/get_hardware")
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -101,12 +101,11 @@ func getInfoDevice(ctx context.Context, client *http.Client, baseURL string, acc
 		)
 	}
 
-	
 	if err = json.Unmarshal(responseBody, device); err != nil {
-		return fmt.Errorf( 
-			"parse get hardware response: %w; body=%s", 
-			err, 
-			strings.TrimSpace(string(responseBody)), 
+		return fmt.Errorf(
+			"parse get hardware response: %w; body=%s",
+			err,
+			strings.TrimSpace(string(responseBody)),
 		)
 	}
 
@@ -114,9 +113,9 @@ func getInfoDevice(ctx context.Context, client *http.Client, baseURL string, acc
 }
 
 func getDeviceName(shopper Consumer, device *Device) error {
-	
-	check := false 
-	
+
+	check := false
+
 	if shopper.Name == "t2" {
 		device.Name = shopper.NumDote
 
@@ -133,17 +132,16 @@ func getDeviceName(shopper Consumer, device *Device) error {
 		device.Name = device.Mac
 		check = true
 	}
-	
+
 	if !check {
-		return(fmt.Errorf("Такого клиента не существует: %s", shopper.Name))
+		return (fmt.Errorf("Такого клиента не существует: %s", shopper.Name))
 	}
 
 	return nil
 }
 
-
-//Загрузить фото для standby режима
-func uploadStandbyAsset(ctx context.Context, client *http.Client, baseURL string, accessToken string, filePath string) ([]byte, error) {
+// Загрузить фото для standby режима
+func uploadStandbyAsset(ctx context.Context, client *http.Client, baseURL Url, accessToken string, filePath string) ([]byte, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("open file %q: %w", filePath, err)
@@ -172,8 +170,7 @@ func uploadStandbyAsset(ctx context.Context, client *http.Client, baseURL string
 		return nil, fmt.Errorf("close multipart writer: %w", err)
 	}
 
-
-	url := fmt.Sprintf("%s%s", baseURL, "/pipelineomini/installassets/standby")
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/pipelineomini/installassets/standby")
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
@@ -210,3 +207,128 @@ func uploadStandbyAsset(ctx context.Context, client *http.Client, baseURL string
 	return responseBody, nil
 }
 
+// Загрузить фото для режима ожидания
+func uploadWaitAsset(ctx context.Context, client *http.Client, baseURL Url, accessToken string, filePath string) ([]byte, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("open file %q: %w", filePath, err)
+	}
+	defer file.Close()
+
+	var requestBody bytes.Buffer
+
+	writer := multipart.NewWriter(&requestBody)
+
+	filePart, err := writer.CreateFormFile(
+		"file",
+		filepath.Base(filePath),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create multipart file field: %w", err)
+	}
+
+	if _, err := io.Copy(filePart, file); err != nil {
+		return nil, fmt.Errorf("copy file into multipart request: %w", err)
+	}
+
+	// Обязательно закрываем writer до отправки запроса.
+	// Это добавляет завершающую multipart-границу.
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("close multipart writer: %w", err)
+	}
+
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/pipelineomini/installassets/waiting")
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		&requestBody,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create upload request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", bearerToken(accessToken))
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("send upload request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("read upload response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf(
+			"wait asset upload failed: status=%s, body=%s",
+			resp.Status,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
+
+	return responseBody, nil
+}
+
+type DisplayParameters struct {
+	MinDisplayBacklight int  `json:"minDisplayBacklight"`
+	MaxDisplayBacklight int  `json:"maxDisplayBacklight"`
+	FontSize            int  `json:"fontSize"`
+	TextPositionX       int  `json:"textPositionX"`
+	TextPositionY       int  `json:"textPositionY"`
+	DebugMode           bool `json:"debugMode"`
+}
+
+// Изменить параметры дисплея
+func setDisplayParameters(ctx context.Context, client *http.Client, baseURL Url, accessToken string, payload DisplayParameters) ([]byte, error) {
+	requestBody, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("encode request: %w", err)
+	}
+
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/pipelineomini/display")
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		bytes.NewReader(requestBody),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", bearerToken(accessToken))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf(
+			"remote transaction failed: status=%s, body=%s",
+			resp.Status,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
+
+	return responseBody, nil
+}
+
+// Инициализировать случайное число
+func setInitSeed(ctx context.Context, client *http.Client, baseURL Url) error {
+	cmd := exec.Command("ssh", "-i", "~/.ssh/id_rsa", "root@"+baseURL.host, "mkdir -p /root/.magprocryptopack && openssl rand -out /root/.magprocryptopack/random_seed 40")
+	return cmd.Run()
+}

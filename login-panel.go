@@ -20,7 +20,7 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func login(ctx context.Context, client *http.Client, baseURL, username, password string) (*LoginResponse, error) {
+func login(ctx context.Context, client *http.Client, baseURL Url, username, password string) (*LoginResponse, error) {
 	requestBody := LoginRequest{
 		Username: username,
 		Password: password,
@@ -31,8 +31,7 @@ func login(ctx context.Context, client *http.Client, baseURL, username, password
 		return nil, fmt.Errorf("encode request: %w", err)
 	}
 
-
-	url := fmt.Sprintf("%s%s", baseURL, "/auth/login")
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/auth/login")
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodPost,
@@ -83,7 +82,6 @@ func login(ctx context.Context, client *http.Client, baseURL, username, password
 	return &result, nil
 }
 
-
 func bearerToken(token string) string {
 	token = strings.TrimSpace(token)
 	if strings.HasPrefix(strings.ToLower(token), "bearer ") {
@@ -92,10 +90,9 @@ func bearerToken(token string) string {
 	return "Bearer " + token
 }
 
+func refreshTokens(ctx context.Context, client *http.Client, baseURL Url, tokens *LoginResponse) error {
 
-func refreshTokens(ctx context.Context, client *http.Client, baseURL string, tokens *LoginResponse) error {
-	
-	url := fmt.Sprintf("%s%s", baseURL, "/auth/refresh")
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/auth/refresh")
 	req, err := http.NewRequestWithContext(
 		ctx,
 		http.MethodGet,
@@ -128,7 +125,6 @@ func refreshTokens(ctx context.Context, client *http.Client, baseURL string, tok
 		)
 	}
 
-
 	if err := json.Unmarshal(responseBody, tokens); err != nil {
 		return fmt.Errorf(
 			"decode refresh response: %w; body=%s",
@@ -143,5 +139,3 @@ func refreshTokens(ctx context.Context, client *http.Client, baseURL string, tok
 
 	return nil
 }
-
-
