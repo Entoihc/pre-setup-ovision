@@ -139,3 +139,107 @@ func refreshTokens(ctx context.Context, client *http.Client, baseURL Url, tokens
 
 	return nil
 }
+
+type securityStatus struct {
+	Status struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"status"`
+	Data struct {
+		Hsc              bool   `json:"hsc"`
+		Cipf             string `json:"cipf"`
+		OpenSSL          string `json:"openssl"`
+		OpenVPN_gost     string `json:"openvpn_gost"`
+		CryptoTunnel     string `json:"cryptotunnel"`
+		LicenseActivated bool   `json:"license_activated"`
+	} `json:"data"`
+}
+
+func checkPassword(ctx context.Context, client *http.Client, baseURL Url, login *LoginRequest) error {
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/security/status")
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		url,
+		nil,
+	)
+	if err != nil {
+		return fmt.Errorf("create check request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send check request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return fmt.Errorf("read check response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf(
+			"check failed: status=%s, body=%s",
+			resp.Status,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
+
+	var status securityStatus
+	if err := json.Unmarshal(responseBody, &status); err != nil {
+		return fmt.Errorf("decode check response: %w; body=%s", err, strings.TrimSpace(string(responseBody)))
+	}
+
+	if !status.Data.Hsc {
+		err = createPassword(ctx, client, baseURL, login.Password)
+	}
+
+	return nil
+}
+
+func createPassword(ctx context.Context, client *http.Client, baseURL Url, password string) error {
+
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/security/password")
+
+	body, err := json.Marshal(password)
+	if err != nil {
+		return fmt.Errorf("encode request: %w", err)
+	}
+
+	fmt.Println(body)
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodPost,
+		url,
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		return fmt.Errorf("create set password request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("send set password request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return fmt.Errorf("read set password response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf(
+			"set password failed: status=%s, body=%s",
+			resp.Status,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
+
+	return nil
+}

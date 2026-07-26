@@ -38,7 +38,7 @@ func main() {
 
 	pathStandBy := "icon-waiting.png"
 	pathWait := "icon-waiting.png"
-	// pathOpenSSL := "./CIPTonline/openssl-r_1.1.1o-6.10.around_armhf.deb"
+	pathOpenSSL := "./CIPTonline/openssl-r_1.1.1o-6.10.around_armhf.deb"
 	pathOpenVPN := "./CIPTonline/openvpn-gost_2.4.11-5.12_armhf.deb"
 	pathStunnel := "./CIPTonline/stunnel-gost_5.60-5.9_armhf.deb"
 	pathGmkseed := "./CIPTonline/gmkseed_4.0.0-4.2_armhf.deb"
@@ -51,7 +51,7 @@ func main() {
 	}
 
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 25 * time.Second,
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -63,6 +63,13 @@ func main() {
 	}
 
 	//	Основной цикл
+
+	err := checkPassword(ctx, client, baseURL, &creds)
+	if err != nil {
+		fmt.Printf("Ошибка проверки пароля: %v\n", err)
+		return
+	}
+
 	tokenAuth, err := login(ctx, client, baseURL, creds.Username, creds.Password)
 	if err != nil {
 		fmt.Printf("Ошибка авторизации: %v\n", err)
@@ -94,58 +101,61 @@ func main() {
 		TimePing:             3,
 	}
 
-	_, err = setRemoteTransactionParameters(ctx, client, baseURL, tokenAuth.AccessToken, payloadRemoteTransaction)
+	another := false
+	if another {
+		_, err = setRemoteTransactionParameters(ctx, client, baseURL, tokenAuth.AccessToken, payloadRemoteTransaction)
+		if err != nil {
+			fmt.Printf("Ошибка перевода в режим внешнего управления: %v\n", err)
+			return
+		}
+
+		_, err = uploadStandbyAsset(ctx, client, baseURL, tokenAuth.AccessToken, pathStandBy)
+		if err != nil {
+			fmt.Printf("Ошибка загрузки изображения standBy: %v\n", err)
+			return
+		}
+
+		_, err = uploadWaitAsset(ctx, client, baseURL, tokenAuth.AccessToken, pathWait)
+		if err != nil {
+			fmt.Printf("Ошибка загрузки изображения для режима ожидания: %v\n", err)
+			return
+		}
+
+		err = refreshTokens(ctx, client, baseURL, tokenAuth)
+		if err != nil {
+			fmt.Printf("Ошибка обновления токена: %v\n", err)
+			return
+		}
+
+		payloadDisplayParameters := DisplayParameters{
+			MinDisplayBacklight: 170,
+			MaxDisplayBacklight: 210,
+			FontSize:            40,
+			TextPositionX:       240,
+			TextPositionY:       120,
+			DebugMode:           true,
+		}
+
+		_, err = setDisplayParameters(ctx, client, baseURL, tokenAuth.AccessToken, payloadDisplayParameters)
+		if err != nil {
+			fmt.Printf("Ошибка изменения параметров дисплея: %v\n", err)
+			return
+		}
+
+		err = setInitSeed(ctx, client, baseURL)
+		if err != nil {
+			fmt.Printf("Ошибка инициализации случайного числа: %v\n", err)
+			return
+		}
+	}
+
+	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathOpenSSL)
 	if err != nil {
-		fmt.Printf("Ошибка перевода в режим внешнего управления: %v\n", err)
+		fmt.Printf("Ошибка установки СКЗИ: %v\n", err)
 		return
 	}
 
-	_, err = uploadStandbyAsset(ctx, client, baseURL, tokenAuth.AccessToken, pathStandBy)
-	if err != nil {
-		fmt.Printf("Ошибка загрузки изображения standBy: %v\n", err)
-		return
-	}
-
-	_, err = uploadWaitAsset(ctx, client, baseURL, tokenAuth.AccessToken, pathWait)
-	if err != nil {
-		fmt.Printf("Ошибка загрузки изображения для режима ожидания: %v\n", err)
-		return
-	}
-
-	err = refreshTokens(ctx, client, baseURL, tokenAuth)
-	if err != nil {
-		fmt.Printf("Ошибка обновления токена: %v\n", err)
-		return
-	}
-
-	payloadDisplayParameters := DisplayParameters{
-		MinDisplayBacklight: 170,
-		MaxDisplayBacklight: 210,
-		FontSize:            40,
-		TextPositionX:       240,
-		TextPositionY:       120,
-		DebugMode:           true,
-	}
-
-	_, err = setDisplayParameters(ctx, client, baseURL, tokenAuth.AccessToken, payloadDisplayParameters)
-	if err != nil {
-		fmt.Printf("Ошибка изменения параметров дисплея: %v\n", err)
-		return
-	}
-
-	err = setInitSeed(ctx, client, baseURL)
-	if err != nil {
-		fmt.Printf("Ошибка инициализации случайного числа: %v\n", err)
-		return
-	}
-
-	// _, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathOpenSSL)
-	// if err != nil {
-	// 	fmt.Printf("Ошибка установки СКЗИ: %v\n", err)
-	// 	return
-	// }
-
-	// time.Sleep(10 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathOpenVPN)
 	if err != nil {
