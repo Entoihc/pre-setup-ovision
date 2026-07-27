@@ -140,21 +140,6 @@ func refreshTokens(ctx context.Context, client *http.Client, baseURL Url, tokens
 	return nil
 }
 
-type securityStatus struct {
-	Status struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"status"`
-	Data struct {
-		Hsc              bool   `json:"hsc"`
-		Cipf             string `json:"cipf"`
-		OpenSSL          string `json:"openssl"`
-		OpenVPN_gost     string `json:"openvpn_gost"`
-		CryptoTunnel     string `json:"cryptotunnel"`
-		LicenseActivated bool   `json:"license_activated"`
-	} `json:"data"`
-}
-
 func checkPassword(ctx context.Context, client *http.Client, baseURL Url, login *LoginRequest) error {
 	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/security/status")
 
@@ -194,6 +179,9 @@ func checkPassword(ctx context.Context, client *http.Client, baseURL Url, login 
 
 	if !status.Data.Hsc {
 		err = createPassword(ctx, client, baseURL, login.Password)
+		if err != nil {
+			return fmt.Errorf("Ошибка при создании пароля: %s", err)
+		}
 	}
 
 	return nil
@@ -203,12 +191,12 @@ func createPassword(ctx context.Context, client *http.Client, baseURL Url, passw
 
 	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/security/password")
 
-	body, err := json.Marshal(password)
+	body, err := json.Marshal(struct {
+		Password string `json:"password"`
+	}{Password: password})
 	if err != nil {
 		return fmt.Errorf("encode request: %w", err)
 	}
-
-	fmt.Println(body)
 
 	req, err := http.NewRequestWithContext(
 		ctx,

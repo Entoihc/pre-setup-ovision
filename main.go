@@ -26,12 +26,27 @@ type Url struct {
 	portPipeline string
 }
 
+type securityStatus struct {
+	Status struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"status"`
+	Data struct {
+		Hsc              bool   `json:"hsc"`
+		Cipf             string `json:"cipf"`
+		OpenSSL          string `json:"openssl"`
+		OpenVPN_gost     string `json:"openvpn_gost"`
+		CryptoTunnel     string `json:"cryptotunnel"`
+		LicenseActivated bool   `json:"license_activated"`
+	} `json:"data"`
+}
+
 func main() {
 
 	// Конфиг
 	baseURL := Url{
 		protocol:     "http",
-		host:         "192.168.93.72",
+		host:         "192.168.88.127",
 		portPanel:    "4011",
 		portPipeline: "7777",
 	}
@@ -42,6 +57,7 @@ func main() {
 	pathOpenVPN := "./CIPTonline/openvpn-gost_2.4.11-5.12_armhf.deb"
 	pathStunnel := "./CIPTonline/stunnel-gost_5.60-5.9_armhf.deb"
 	pathGmkseed := "./CIPTonline/gmkseed_4.0.0-4.2_armhf.deb"
+	licenseCipt := "255D-EJW4-CD58-C36N"
 
 	var curretDevice Device
 
@@ -51,10 +67,10 @@ func main() {
 	}
 
 	client := &http.Client{
-		Timeout: 25 * time.Second,
+		Timeout: 30 * time.Minute,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	creds := LoginRequest{
@@ -81,13 +97,13 @@ func main() {
 
 	err = getInfoDevice(ctx, client, baseURL, tokenAuth.AccessToken, &curretDevice)
 	if err != nil {
-		fmt.Printf("fail get info device: %w", err)
+		fmt.Printf("fail get info device: %s", err)
 		return
 	}
 
 	err = getDeviceName(shopper, &curretDevice)
 	if err != nil {
-		fmt.Printf("fail get info device: %w", err)
+		fmt.Printf("fail get info device: %s", err)
 		return
 	}
 
@@ -142,36 +158,41 @@ func main() {
 			return
 		}
 
-		err = setInitSeed(ctx, client, baseURL)
-		if err != nil {
-			fmt.Printf("Ошибка инициализации случайного числа: %v\n", err)
-			return
-		}
 	}
 
-	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathOpenSSL)
+	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathOpenSSL, "openssl")
 	if err != nil {
 		fmt.Printf("Ошибка установки СКЗИ: %v\n", err)
 		return
 	}
 
-	time.Sleep(10 * time.Second)
-
-	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathOpenVPN)
+	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathOpenVPN, "openvpn")
 	if err != nil {
 		fmt.Printf("Ошибка установки OpenVPN: %v\n", err)
 		return
 	}
 
-	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathStunnel)
+	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathStunnel, "stunnel")
 	if err != nil {
 		fmt.Printf("Ошибка установки Stunnel: %v\n", err)
 		return
 	}
 
-	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathGmkseed)
+	_, err = uploadCipt(ctx, client, baseURL, tokenAuth.AccessToken, pathGmkseed, "gmkseed")
 	if err != nil {
 		fmt.Printf("Ошибка установки Gmkseed: %v\n", err)
+		return
+	}
+
+	err = setInitSeed(ctx, client, baseURL)
+	if err != nil {
+		fmt.Printf("Ошибка инициализации случайного числа: %v\n", err)
+		return
+	}
+
+	err = activateLicenseOnline(ctx, client, baseURL, licenseCipt)
+	if err != nil {
+		fmt.Printf("Ошибка активации лицензии: %v\n", err)
 		return
 	}
 
