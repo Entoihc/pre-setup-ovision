@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 func login(ctx context.Context, client *http.Client, baseURL Url, username, password string) (*LoginResponse, error) {
@@ -69,6 +70,8 @@ func login(ctx context.Context, client *http.Client, baseURL Url, username, pass
 		return nil, fmt.Errorf("response does not contain access_token")
 	}
 
+	refresh = time.Now().Add(30 * time.Second)
+
 	return &result, nil
 }
 
@@ -81,6 +84,10 @@ func bearerToken(token string) string {
 }
 
 func refreshTokens(ctx context.Context, client *http.Client, baseURL Url, tokens *LoginResponse) error {
+
+	if time.Now().Before(refresh) {
+		return nil
+	}
 
 	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/auth/refresh")
 	req, err := http.NewRequestWithContext(
@@ -126,6 +133,8 @@ func refreshTokens(ctx context.Context, client *http.Client, baseURL Url, tokens
 	if tokens.AccessToken == "" {
 		return fmt.Errorf("refresh response does not contain access_token")
 	}
+
+	refresh = time.Now().Add(30 * time.Second)
 
 	return nil
 }

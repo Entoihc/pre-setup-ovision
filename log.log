@@ -1,0 +1,17 @@
+2026-07-28 23:54:57 - НАЧАЛО РАБОТЫ СКРИПТА ==================================================
+2026-07-28 23:54:57 - {"name":"t2","orgName":"ООО \"Т2 Мобайл\"","inn":"7743895280"}
+2026-07-28 23:54:57 - Девайс 1 - IP:192.168.93.72, NumDote:123143
+2026-07-28 23:54:57 - MAC:12:00:98:51:42:d4, Name:123143, CN:BT-5142D4-123143
+2026-07-28 23:54:57 - Будут изменены параметры режима внешнего распознавания
+2026-07-28 23:54:59 - Ошибка загрузки изображения для режима ожидания окончания транзакции: open file "./img/icon-standby.png": open ./img/icon-standby.png: The system cannot find the file specified.
+2026-07-28 23:54:59 - Девайс 2 - IP:192.168.93.73, NumDote:202837
+2026-07-28 23:55:20 - Ошибка проверки пароля - send check request: Get "http://192.168.93.73:4011/security/status": dial tcp 192.168.93.73:4011: connectex: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+2026-07-28 23:55:27 - Ошибка авторизации - send request: Post "http://192.168.93.73:4011/auth/login": context deadline exceeded
+2026-07-28 23:56:24 - НАЧАЛО РАБОТЫ СКРИПТА ==================================================
+2026-07-28 23:56:24 - {"name":"t2","orgName":"ООО \"Т2 Мобайл\"","inn":"7743895280"}
+2026-07-28 23:56:24 - Девайс 1 - IP:192.168.93.72, NumDote:123143
+2026-07-28 23:56:25 - MAC:12:00:98:51:42:d4, Name:123143, CN:BT-5142D4-123143
+2026-07-28 23:56:25 - Будут изменены параметры режима внешнего распознавания
+2026-07-28 23:56:26 - Девайс 2 - IP:192.168.93.73, NumDote:202837
+2026-07-28 23:56:47 - Ошибка проверки пароля - send check request: Get "http://192.168.93.73:4011/security/status": dial tcp 192.168.93.73:4011: connectex: A connection attempt failed because the connected party did not properly respond after a period of time, or established connection failed because connected host has failed to respond.
+2026-07-28 23:56:54 - Ошибка авторизации - send request: Post "http://192.168.93.73:4011/auth/login": context deadline exceeded

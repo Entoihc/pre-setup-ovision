@@ -7,35 +7,24 @@ package main
 // GENERAL TYPE AND CONSTS
 //
 
-// Action
-type Action struct {
-	SetRemoteTransactionParameters bool `json:"allAction.setRemoteTransactionParameters.action"`
-	UploadPhoto                    bool
-	SetDisplayParameters           bool
-	SetCIPT                        bool
-	DownloadInfoFile               bool
-	UploadLicenseOffline           bool
-	IssueRequestCsr                bool
-	UploadCert                     bool
-	SetOpenVPNParameters           bool
-	SetStunnelParameters           bool
-}
-
 // Информация о клиенте
 type Consumer struct {
-	Name    string
-	OrgName string
-	INN     string
+	Name    string `json:"name"`
+	OrgName string `json:"orgName"`
+	INN     string `json:"inn"`
 }
 
+// Информация о девайсе
 type Device struct {
 	Mac        string `json:"mac_eth"`
 	Name       string
+	SerialMac  string
 	Serial     string
 	CommonName string
 	NumDote    string
 }
 
+// Ссылка для отправки запроса
 type Url struct {
 	protocol     string
 	host         string
@@ -43,23 +32,20 @@ type Url struct {
 	portPipeline string
 }
 
-type securityStatus struct {
-	Status struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"status"`
-	Data struct {
-		Hsc              bool   `json:"hsc"`
-		Cipf             string `json:"cipf"`
-		OpenSSL          string `json:"openssl"`
-		OpenVPN_gost     string `json:"openvpn_gost"`
-		CryptoTunnel     string `json:"cryptotunnel"`
-		LicenseActivated bool   `json:"license_activated"`
-	} `json:"data"`
-}
-
+// Пути до утилит необходимых для работы скрипта
 type pathUtil struct {
 	OpenSSL string
+}
+
+// Файл для логов
+type Logger struct {
+	filename string
+}
+
+// Структура для парсинга CSV файла с девайсами
+type CSVData struct {
+	Header []string
+	Rows   []map[string]string
 }
 
 //
@@ -75,6 +61,23 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+// Текущий статус по устройству
+type securityStatus struct {
+	Status struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"status"`
+	Data struct {
+		Hsc              bool   `json:"hsc"`
+		Cipf             string `json:"cipf"`
+		OpenSSL          string `json:"openssl"`
+		OpenVPN_gost     string `json:"openvpn_gost"`
+		CryptoTunnel     string `json:"cryptotunnel"`
+		LicenseActivated bool   `json:"license_activated"`
+	} `json:"data"`
+}
+
+// Настройки режима внешнего управления
 type RemoteTransactionRequest struct {
 	Enabled              bool   `json:"enabled"`
 	DeviceName           string `json:"deviceName"`
@@ -83,6 +86,7 @@ type RemoteTransactionRequest struct {
 	TimePing             int    `json:"timePing"`
 }
 
+// Настройки дисплея
 type DisplayParameters struct {
 	MinDisplayBacklight int  `json:"minDisplayBacklight"`
 	MaxDisplayBacklight int  `json:"maxDisplayBacklight"`

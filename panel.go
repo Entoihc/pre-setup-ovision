@@ -96,7 +96,7 @@ func getInfoDevice(ctx context.Context, client *http.Client, baseURL Url, access
 
 	if err = json.Unmarshal(responseBody, device); err != nil {
 		return fmt.Errorf(
-			"parse get hardware response: %w; body=%s",
+			"Ну удалось распарсить ответ от девайса с информацией о нем: %w; body=%s",
 			err,
 			strings.TrimSpace(string(responseBody)),
 		)
@@ -105,24 +105,25 @@ func getInfoDevice(ctx context.Context, client *http.Client, baseURL Url, access
 	return nil
 }
 
-func getDeviceName(shopper Consumer, device *Device) error {
+func getDeviceName(shopper *Consumer, device *Device) error {
 
 	check := false
 
 	if shopper.Name == "t2" {
-		device.Name = shopper.NumDote
+		device.Name = device.NumDote
 
 		cutMAC := strings.ReplaceAll(device.Mac, ":", "")
 		if len(cutMAC) < 6 {
 			return fmt.Errorf("некорректный MAC-адрес: %s", device.Mac)
 		}
 		cutMAC = strings.ToUpper(cutMAC[len(cutMAC)-6:])
-		device.CommonName = fmt.Sprintf("BT-%s-%s", cutMAC, shopper.NumDote)
+		device.CommonName = fmt.Sprintf("BT-%s-%s", cutMAC, device.NumDote)
 		check = true
 	}
 
 	if shopper.Name == "ovision" {
 		device.Name = device.Mac
+		device.CommonName = device.Mac
 		check = true
 	}
 

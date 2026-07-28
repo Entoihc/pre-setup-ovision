@@ -4,13 +4,14 @@
 			"action": true,
 			"RemoteTransactionParameters": {
 				"Enabled": true,
+				"DeviceNameIsHostName": false,
 				"PingURL": "",
 				"TimePing": 3
 			}
 		},
 		"uploadPhoto": {
 			"action": true,
-			"pathStandBy": "./img/icon-standby.png",
+			"pathStandBy": "./img/icon-stand-by.png",
 			"pathWait": "./img/icon-waiting.png"
 		},
 		"setDisplayParameters": {
@@ -31,11 +32,15 @@
 			"pathOpenVPNOnline": "./CIPTonline/openvpn-gost_2.4.11-5.12_armhf.deb",
 			"pathStunnelOnline": "./CIPTonline/stunnel-gost_5.60-5.9_armhf.deb",
 			"pathGmkseedOnline": "./CIPTonline/gmkseed_4.0.0-4.2_armhf.deb",
+			"activate": true,
 			"license": "WBRX-HRDS-KLTZ-842U",
 			"pathOpenSSLOffline": "./CIPToffline/openssl-r_1.1.1o-6.10.around_armhf.deb",
 			"pathOpenVPNOffline": "./CIPToffline/openvpn-gost_2.4.11-5.12_armhf.deb",
 			"pathStunnelOffline": "./CIPToffline/stunnel-gost_5.60-5.9_armhf.deb",
 			"pathGmkseedOffline": "./CIPToffline/gmkseed_4.0.0-4.2_armhf.deb"
+		},
+		"initSeed": {
+			"action": true
 		},
 		"downloadInfoFile": {
 			"action": true,

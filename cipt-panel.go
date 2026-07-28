@@ -360,7 +360,7 @@ func readCertsCommonName(dir string, opensslPath string) (map[string]string, err
 
 		path := filepath.Join(dir, entry.Name())
 
-		commonName, err := readCommonName(path)
+		commonName, err := readCommonName(path, opensslPath)
 		if err != nil {
 			fmt.Printf("Пропускаю %s: %v\n", entry.Name(), err)
 			continue
