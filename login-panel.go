@@ -10,16 +10,6 @@ import (
 	"strings"
 )
 
-type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type LoginResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-}
-
 func login(ctx context.Context, client *http.Client, baseURL Url, username, password string) (*LoginResponse, error) {
 	requestBody := LoginRequest{
 		Username: username,

@@ -15,13 +15,6 @@ import (
 )
 
 // Задать параметры для внешнего распознавания
-type RemoteTransactionRequest struct {
-	Enabled              bool   `json:"enabled"`
-	DeviceName           string `json:"deviceName"`
-	DeviceNameIsHostName bool   `json:"deviceNameIsHostName"`
-	PingURL              string `json:"pingUrl"`
-	TimePing             int    `json:"timePing"`
-}
 
 // Настроить режим внешнего распознавания
 func setRemoteTransactionParameters(ctx context.Context, client *http.Client, baseURL Url, accessToken string, payload RemoteTransactionRequest) ([]byte, error) {
@@ -272,15 +265,6 @@ func uploadWaitAsset(ctx context.Context, client *http.Client, baseURL Url, acce
 	}
 
 	return responseBody, nil
-}
-
-type DisplayParameters struct {
-	MinDisplayBacklight int  `json:"minDisplayBacklight"`
-	MaxDisplayBacklight int  `json:"maxDisplayBacklight"`
-	FontSize            int  `json:"fontSize"`
-	TextPositionX       int  `json:"textPositionX"`
-	TextPositionY       int  `json:"textPositionY"`
-	DebugMode           bool `json:"debugMode"`
 }
 
 // Изменить параметры дисплея

@@ -4,67 +4,56 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
+
+	"github.com/tidwall/gjson"
 )
-
-type Consumer struct {
-	Name    string
-	NumDote string
-}
-
-type Device struct {
-	Mac        string `json:"mac_eth"`
-	Serial     string
-	CommonName string
-	Name       string
-}
-
-type Url struct {
-	protocol     string
-	host         string
-	portPanel    string
-	portPipeline string
-}
-
-type securityStatus struct {
-	Status struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"status"`
-	Data struct {
-		Hsc              bool   `json:"hsc"`
-		Cipf             string `json:"cipf"`
-		OpenSSL          string `json:"openssl"`
-		OpenVPN_gost     string `json:"openvpn_gost"`
-		CryptoTunnel     string `json:"cryptotunnel"`
-		LicenseActivated bool   `json:"license_activated"`
-	} `json:"data"`
-}
 
 func main() {
 
-	// Конфиг
-	baseURL := Url{
-		protocol:     "http",
-		host:         "192.168.88.127",
-		portPanel:    "4011",
-		portPipeline: "7777",
+	//
+	// Чтение конфига
+	// Решил конфиг не разбивать на структуры, больно много переписывать впустую, пока буду работать напрямую с json через gjson
+	//
+
+	data, err := os.ReadFile("config.json")
+	if err != nil {
+		fmt.Println("Ошибка чтения конфигурационного файла:", err)
+		return
 	}
 
-	pathStandBy := "icon-waiting.png"
-	pathWait := "icon-waiting.png"
-	pathOpenSSL := "./CIPTonline/openssl-r_1.1.1o-6.10.around_armhf.deb"
-	pathOpenVPN := "./CIPTonline/openvpn-gost_2.4.11-5.12_armhf.deb"
-	pathStunnel := "./CIPTonline/stunnel-gost_5.60-5.9_armhf.deb"
-	pathGmkseed := "./CIPTonline/gmkseed_4.0.0-4.2_armhf.deb"
-	licenseCipt := "255D-EJW4-CD58-C36N"
-
-	var curretDevice Device
-
-	shopper := Consumer{
-		Name:    "t2",
-		NumDote: "120987",
+	// Преобразуем в строку и отдаем gjson
+	configJSON := string(data)
+	pathLogFile := gjson.Get(configJSON, "path.pathLogFile").String()
+	fmt.Println("Все логи будут записаны в файл:", pathLogFile)
+	log(pathLogFile, "")
+	if err != nil {
+		fmt.Printf("%s - Не удалось записать лог в файл: %s", time.Now().Format("2006-01-02 15:04:05"), "")
 	}
+	// // Конфиг
+	// baseURL := Url{
+	// 	protocol:     "http",
+	// 	host:         "192.168.93.72",
+	// 	portPanel:    "4011",
+	// 	portPipeline: "7777",
+	// }
+
+	// pathStandBy := "icon-waiting.png"
+	// pathWait := "icon-waiting.png"
+	// pathOpenSSL := "./CIPTonline/openssl-r_1.1.1o-6.10.around_armhf.deb"
+	// pathOpenVPN := "./CIPTonline/openvpn-gost_2.4.11-5.12_armhf.deb"
+	// pathStunnel := "./CIPTonline/stunnel-gost_5.60-5.9_armhf.deb"
+	// pathGmkseed := "./CIPTonline/gmkseed_4.0.0-4.2_armhf.deb"
+	// licenseCipt := "WBRX-HRDS-KLTZ-842U"
+
+	// var curretDevice Device
+
+	// shopper := Consumer{
+	// 	Name:    "t2",
+	// 	NumDote: "120987",
+	// 	OrgName: "ООО \"Т2 Мобайл\"",
+	// }
 
 	client := &http.Client{
 		Timeout: 30 * time.Minute,
@@ -190,9 +179,27 @@ func main() {
 		return
 	}
 
-	err = activateLicenseOnline(ctx, client, baseURL, licenseCipt)
+	err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
 	if err != nil {
 		fmt.Printf("Ошибка активации лицензии: %v\n", err)
+		return
+	}
+
+	payloadOpenVPNParameters := OpenVpnParametrs{
+		Addresses: []OpenVpnAddress{
+			{
+				IP:   "192.168.1.100",
+				Port: 1194,
+			},
+		},
+		TunMTU:    1500,
+		Protocol:  "tcp",
+		CrlVerify: false,
+	}
+
+	_, err = setOpenVpnParametrs(ctx, client, baseURL, tokenAuth.AccessToken, payloadOpenVPNParameters)
+	if err != nil {
+		fmt.Printf("Ошибка установки параметров OpenVPN: %v\n", err)
 		return
 	}
 
