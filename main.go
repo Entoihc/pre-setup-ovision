@@ -84,7 +84,9 @@ func main() {
 		portPipeline: "7777",
 	}
 
+	//
 	// Вывод того что будет делать скрипт и ожидание подтверждения пользователя
+	//
 	fmt.Println("Будут выполнены следующие действия:")
 	setRemoteTransactionParametersAction := gjson.Get(configJSON, "allAction.setRemoteTransactionParameters.action").Bool()
 	if setRemoteTransactionParametersAction {
@@ -141,7 +143,9 @@ func main() {
 		fmt.Println("setStunnelParameters")
 	}
 
+	//
 	// По каждому устройству выполняются действия указанные в конфиге
+	//
 	for i, row := range listDevice.Rows {
 		baseURL.host = row["IP"]
 		device.NumDote = row["NumDote"]
@@ -274,14 +278,32 @@ func main() {
 				logger.Log(fmt.Sprintf("Ошибка установки Gmkseed: %s", err))
 			}
 
+			activate := gjson.Get(configJSON, "allAction.setCIPT.activate").Bool()
+			if activate {
+				logger.Log("Активация онлайн лицензии СКЗИ")
+				licenseCipt := gjson.Get(configJSON, "allAction.setCIPT.license").String()
+				err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
+				if err != nil {
+					logger.Log(fmt.Sprintf("Ошибка активации лицензии: %s", err))
+				}
+			}
+
 		}
 
 		if initSeedAction {
 			logger.Log("Генерация случайного числа")
-
 			err = setInitSeed(ctx, client, baseURL)
 			if err != nil {
 				logger.Log(fmt.Sprintf("Ошибка генерации случайного числа: %s", err))
+			}
+		}
+
+		if issueRequestCsrAction {
+			logger.Log("Скачивание запроса на сертификат")
+			pathDirCert := gjson.Get(configJSON, "allAction.issueRequestCsr.pathDirCert").String()
+			_, err = issueRequestCertificate(ctx, client, baseURL, tokenAuth.AccessToken, &device, &shopper, pathDirCert)
+			if err != nil {
+				logger.Log(fmt.Sprintf("Ошибка скачивания запроса на сертификат: %s", err))
 			}
 		}
 
@@ -289,34 +311,6 @@ func main() {
 
 	return
 }
-
-// pathStandBy := "icon-waiting.png"
-// pathWait := "icon-waiting.png"
-// pathOpenSSL := "./CIPTonline/openssl-r_1.1.1o-6.10.around_armhf.deb"
-// pathOpenVPN := "./CIPTonline/openvpn-gost_2.4.11-5.12_armhf.deb"
-// pathStunnel := "./CIPTonline/stunnel-gost_5.60-5.9_armhf.deb"
-// pathGmkseed := "./CIPTonline/gmkseed_4.0.0-4.2_armhf.deb"
-// licenseCipt := "WBRX-HRDS-KLTZ-842U"
-
-// var curretDevice Device
-
-// //	Основной цикл
-
-// //	fmt.Println(tokenAuth.AccessToken)
-// //	fmt.Println(tokenAuth.RefreshToken)
-
-// //	fmt.Printf("Name is: %s\n", curretDevice.CommonName)
-
-// another := false
-// if another {
-
-// }
-
-// err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
-// if err != nil {
-// 	fmt.Printf("Ошибка активации лицензии: %v\n", err)
-// 	return
-// }
 
 // payloadOpenVPNParameters := OpenVpnParametrs{
 // 	Addresses: []OpenVpnAddress{

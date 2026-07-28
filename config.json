@@ -1,7 +1,7 @@
 {
 	"allAction":{
 		"setRemoteTransactionParameters": {
-			"action": true,
+			"action": false,
 			"RemoteTransactionParameters": {
 				"Enabled": true,
 				"DeviceNameIsHostName": false,
@@ -10,12 +10,12 @@
 			}
 		},
 		"uploadPhoto": {
-			"action": true,
+			"action": false,
 			"pathStandBy": "./img/icon-stand-by.png",
 			"pathWait": "./img/icon-waiting.png"
 		},
 		"setDisplayParameters": {
-			"action": true,
+			"action": false,
 			"display": {
 				"MinDisplayBacklight": 170,
 				"MaxDisplayBacklight": 210,
@@ -43,7 +43,7 @@
 			"action": true
 		},
 		"downloadInfoFile": {
-			"action": true,
+			"action": false,
 			"pathDirInfoFile": "./info"
 		},
 		"uploadLicenseOffline": {
@@ -88,7 +88,7 @@
 	},
 	"consumer": {
 		"Name": "t2",
-		"OrgName": "ООО \"Т2 Мобайл\"",
+		"OrgName": "ООО Т2 Мобайл",
 		"INN": "7743895280"
 	},
 	"login": {

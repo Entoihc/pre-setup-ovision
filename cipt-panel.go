@@ -293,11 +293,14 @@ func setOpenVpnParametrs(ctx context.Context, client *http.Client, baseURL Url, 
 	return responseBody, nil
 }
 
-func issueRequestCertificate(ctx context.Context, client *http.Client, baseURL Url, accessToken string, device *Device, shopper *Consumer) ([]byte, error) {
-
+func issueRequestCertificate(ctx context.Context, client *http.Client, baseURL Url, accessToken string, device *Device, shopper *Consumer, path string) ([]byte, error) {
 	rawUrl := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/security/openvpn_cert_req")
 
-	fullUrl, _ := url.Parse(rawUrl)
+	fullUrl, err := url.Parse(rawUrl)
+	if err != nil {
+		return nil, fmt.Errorf("parse URL: %w", err)
+	}
+
 	query := fullUrl.Query()
 	query.Set("common_name", device.CommonName)
 	query.Set("org_name", shopper.OrgName)
@@ -321,20 +324,38 @@ func issueRequestCertificate(ctx context.Context, client *http.Client, baseURL U
 	}
 	defer resp.Body.Close()
 
-	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
-	}
-
+	// Проверяем статус до чтения тела
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// Читаем тело только для ошибки
+		errorBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf(
 			"remote transaction failed: status=%s, body=%s",
 			resp.Status,
-			strings.TrimSpace(string(responseBody)),
+			strings.TrimSpace(string(errorBody)),
 		)
 	}
 
-	return responseBody, nil
+	// Создаем файл
+	filePath := fmt.Sprintf("%s/%s.csr", path, device.CommonName)
+	file, err := os.Create(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("create file: %w", err)
+	}
+	defer file.Close()
+
+	// Копируем тело ответа напрямую в файл
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("save file: %w", err)
+	}
+
+	// Если нужно вернуть содержимое как []byte, прочитаем его из файла
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("read saved file: %w", err)
+	}
+
+	return content, nil
 }
 
 //
