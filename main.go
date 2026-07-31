@@ -304,6 +304,9 @@ func main() {
 
 		if activateLicenseAction {
 			logger.Log("Активация СКЗИ")
+			online := gjson.Get(configJSON, "allAction.activateLicense.online").Bool()
+
+			if 
 			logger.Log("Активация онлайн лицензии СКЗИ")
 			licenseCipt := gjson.Get(configJSON, "allAction.activateLicense.license").String()
 			err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
