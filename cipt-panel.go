@@ -358,8 +358,6 @@ func issueRequestCertificate(ctx context.Context, client *http.Client, baseURL U
 	return content, nil
 }
 
-//
-
 func readCertsCommonName(dir string, opensslPath string) (map[string]string, error) {
 	// Проверяем openssl один раз, чтобы его отсутствие не выглядело
 	// как директория без сертификатов
@@ -692,4 +690,10 @@ func startStunnel(ctx context.Context, client *http.Client, baseURL Url, accessT
 	}
 
 	return responseBody, nil
+}
+
+// Инициализировать случайное число
+func setInitSeed(ctx context.Context, client *http.Client, baseURL Url) error {
+	cmd := exec.Command("ssh", "-o", " StrictHostKeyChecking=no", "-i", "~/.ssh/id_rsa", "root@"+baseURL.host, "mkdir -p /root/.magprocryptopack && openssl rand -out /root/.magprocryptopack/random_seed 40")
+	return cmd.Run()
 }

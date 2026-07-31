@@ -1,5 +1,8 @@
 {
 	"allAction":{
+		"readInstalledService" : {
+			"action": false
+		},
 		"setRemoteTransactionParameters": {
 			"action": false,
 			"RemoteTransactionParameters": {
@@ -26,40 +29,40 @@
 			}
 		},
 		"setCIPT": {
-			"action": true,
+			"action": false,
 			"online": true,
 			"pathOpenSSLOnline": "./CIPTonline/openssl-r_1.1.1o-6.10.around_armhf.deb",
 			"pathOpenVPNOnline": "./CIPTonline/openvpn-gost_2.4.11-5.12_armhf.deb",
 			"pathStunnelOnline": "./CIPTonline/stunnel-gost_5.60-5.9_armhf.deb",
 			"pathGmkseedOnline": "./CIPTonline/gmkseed_4.0.0-4.2_armhf.deb",
-			"activate": true,
-			"license": "WBRX-HRDS-KLTZ-842U",
 			"pathOpenSSLOffline": "./CIPToffline/openssl-r_1.1.1o-6.10.around_armhf.deb",
 			"pathOpenVPNOffline": "./CIPToffline/openvpn-gost_2.4.11-5.12_armhf.deb",
 			"pathStunnelOffline": "./CIPToffline/stunnel-gost_5.60-5.9_armhf.deb",
 			"pathGmkseedOffline": "./CIPToffline/gmkseed_4.0.0-4.2_armhf.deb"
 		},
 		"initSeed": {
-			"action": true
+			"action": false
 		},
 		"downloadInfoFile": {
 			"action": false,
 			"pathDirInfoFile": "./info"
 		},
-		"uploadLicenseOffline": {
+		"activateLicense": {
 			"action": false,
+			"online": true,
+			"license": "FCA4-EVXK-SL55-79P7",
 			"pathDirLicenseFile": "./license"
 		},
 		"issueRequestCsr": {
-			"action": true,
+			"action": false,
 			"pathDirCert": "./csr"
 		},
 		"uploadCert": {
-			"action": true,
+			"action": false,
 			"pathDirCert": "./certs"
 		},
 		"setOpenVPNParameters": {
-			"action": true,
+			"action": false,
 			"start": true,
 			"openvpn": {
 				"OpenVpnAddress": [
@@ -74,7 +77,7 @@
 			}
 		},
 		"setStunnelParameters":  {
-			"action": true,
+			"action": false,
 			"start": true,
 			"stunnel": {
 				"Stage": "test",
@@ -93,6 +96,6 @@
 	},
 	"login": {
 		"Username": "cryptouser",
-		"Password": "Test123@"
+		"Password": "br)3(!rA"
 	}
 }

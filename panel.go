@@ -9,7 +9,6 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -312,8 +311,54 @@ func setDisplayParameters(ctx context.Context, client *http.Client, baseURL Url,
 	return responseBody, nil
 }
 
-// Инициализировать случайное число
-func setInitSeed(ctx context.Context, client *http.Client, baseURL Url) error {
-	cmd := exec.Command("ssh", "-i", "~/.ssh/id_rsa", "root@"+baseURL.host, "mkdir -p /root/.magprocryptopack && openssl rand -out /root/.magprocryptopack/random_seed 40")
-	return cmd.Run()
+func getIstalledPackage(ctx context.Context, client *http.Client, baseURL Url, accessToken string) (string, error) {
+	var inst string
+	url := fmt.Sprintf("%s://%s:%s%s", baseURL.protocol, baseURL.host, baseURL.portPanel, "/system/packages/installed")
+	req, err := http.NewRequestWithContext(
+		ctx,
+		http.MethodGet,
+		url,
+		nil,
+	)
+	if err != nil {
+		return "", fmt.Errorf("create upload request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", bearerToken(accessToken))
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("send upload request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", fmt.Errorf("read upload response: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", fmt.Errorf(
+			"get hardware failed: status=%s, body=%s",
+			resp.Status,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
+
+	var i InstalledResponse
+
+	if err = json.Unmarshal(responseBody, &i); err != nil {
+		return "", fmt.Errorf(
+			"Ну удалось распарсить ответ от девайса с информацией о нем: %w; body=%s",
+			err,
+			strings.TrimSpace(string(responseBody)),
+		)
+	}
+
+	for _, p := range i.Data.Packages {
+		inst = inst + (fmt.Sprintf("\n%s = %s", p.Name, p.Version))
+	}
+
+	return inst, nil
 }

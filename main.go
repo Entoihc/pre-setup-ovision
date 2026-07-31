@@ -39,7 +39,12 @@ func main() {
 
 	// Выводим информацию куда будут записаны логи
 	fmt.Println("Все логи будут записаны в файл:", pathLogFile)
-	logger := NewLogger(pathLogFile)
+	logger := NewLogger(pathLogFile, true)
+
+	// Создаем переменные для вывода инфомрации об устройствах
+	pathOutput := fmt.Sprintf("./out/Info-device-%s", time.Now().Format("2006-01-02 15:04"))
+	output := NewLogger(pathOutput, false)
+	output.Log(fmt.Sprintf("%s,%s,%s,%s,%s,%s", "IP", "MAC", "Name", "NumDote", "CommonName", "Serial"))
 
 	err = logger.Log("НАЧАЛО РАБОТЫ СКРИПТА ==================================================")
 	if err != nil {
@@ -67,7 +72,7 @@ func main() {
 		Timeout: 30 * time.Minute,
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
 	pathListDevices := gjson.Get(configJSON, "path.pathListDevices").String()
@@ -88,6 +93,11 @@ func main() {
 	// Вывод того что будет делать скрипт и ожидание подтверждения пользователя
 	//
 	fmt.Println("Будут выполнены следующие действия:")
+	readInstalledServiceAction := gjson.Get(configJSON, "allAction.readInstalledService.action").Bool()
+	if readInstalledServiceAction {
+		fmt.Println("readInstalledService")
+	}
+
 	setRemoteTransactionParametersAction := gjson.Get(configJSON, "allAction.setRemoteTransactionParameters.action").Bool()
 	if setRemoteTransactionParametersAction {
 		fmt.Println("setRemoteTransactionParameters")
@@ -118,8 +128,8 @@ func main() {
 		fmt.Println("downloadInfoFile")
 	}
 
-	uploadLicenseOfflineAction := gjson.Get(configJSON, "allAction.uploadLicenseOffline.action").Bool()
-	if uploadLicenseOfflineAction {
+	activateLicenseAction := gjson.Get(configJSON, "allAction.activateLicense.action").Bool()
+	if activateLicenseAction {
 		fmt.Println("uploadLicenseOffline")
 	}
 
@@ -149,6 +159,7 @@ func main() {
 	for i, row := range listDevice.Rows {
 		baseURL.host = row["IP"]
 		device.NumDote = row["NumDote"]
+		logger.Log("=========")
 		logger.Log(fmt.Sprintf("Девайс %d - IP:%s, NumDote:%s", i+1, baseURL.host, device.NumDote))
 
 		err := checkPassword(ctx, client, baseURL, &creds)
@@ -182,6 +193,18 @@ func main() {
 		err = refreshTokens(ctx, client, baseURL, tokenAuth)
 		if err != nil {
 			logger.Log(fmt.Sprintf("Ошибка обновления токена - %s", err))
+		}
+
+		if readInstalledServiceAction {
+			logger.Log("Получение списка установленных пакетов")
+
+			inst, err := getIstalledPackage(ctx, client, baseURL, tokenAuth.AccessToken)
+			if err != nil {
+				logger.Log(fmt.Sprintf("Ошибка получения списка установленных пакетов - %s", err))
+				continue
+			}
+			logger.Log(fmt.Sprintf("Установленные пакеты:%s", inst))
+
 		}
 
 		if setRemoteTransactionParametersAction {
@@ -277,17 +300,16 @@ func main() {
 			if err != nil {
 				logger.Log(fmt.Sprintf("Ошибка установки Gmkseed: %s", err))
 			}
+		}
 
-			activate := gjson.Get(configJSON, "allAction.setCIPT.activate").Bool()
-			if activate {
-				logger.Log("Активация онлайн лицензии СКЗИ")
-				licenseCipt := gjson.Get(configJSON, "allAction.setCIPT.license").String()
-				err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
-				if err != nil {
-					logger.Log(fmt.Sprintf("Ошибка активации лицензии: %s", err))
-				}
+		if activateLicenseAction {
+			logger.Log("Активация СКЗИ")
+			logger.Log("Активация онлайн лицензии СКЗИ")
+			licenseCipt := gjson.Get(configJSON, "allAction.activateLicense.license").String()
+			err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
+			if err != nil {
+				logger.Log(fmt.Sprintf("Ошибка активации лицензии: %s", err))
 			}
-
 		}
 
 		if initSeedAction {
@@ -296,6 +318,11 @@ func main() {
 			if err != nil {
 				logger.Log(fmt.Sprintf("Ошибка генерации случайного числа: %s", err))
 			}
+		}
+
+		err = refreshTokens(ctx, client, baseURL, tokenAuth)
+		if err != nil {
+			logger.Log(fmt.Sprintf("Ошибка обновления токена - %s", err))
 		}
 
 		if issueRequestCsrAction {
@@ -307,6 +334,7 @@ func main() {
 			}
 		}
 
+		output.Log(fmt.Sprintf("%s,%s,%s,%s,%s,%s", baseURL.host, device.Mac, device.Name, device.NumDote, device.CommonName, device.Serial))
 	}
 
 	return

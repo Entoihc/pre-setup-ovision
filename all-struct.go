@@ -37,15 +37,16 @@ type pathUtil struct {
 	OpenSSL string
 }
 
-// Файл для логов
-type Logger struct {
-	filename string
-}
-
 // Структура для парсинга CSV файла с девайсами
 type CSVData struct {
 	Header []string
 	Rows   []map[string]string
+}
+
+// Структура для записи логов
+type Logger struct {
+	filename string
+	viewTime bool
 }
 
 //
@@ -94,6 +95,23 @@ type DisplayParameters struct {
 	TextPositionX       int  `json:"textPositionX"`
 	TextPositionY       int  `json:"textPositionY"`
 	DebugMode           bool `json:"debugMode"`
+}
+
+// Один установленный пакет
+type Package struct {
+	Name    string `json:"package_name"`
+	Version string `json:"version"`
+}
+
+// Ответ со списком установленного ПО
+type InstalledResponse struct {
+	Status struct {
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+	} `json:"status"`
+	Data struct {
+		Packages []Package `json:"packages"`
+	} `json:"data"`
 }
 
 //

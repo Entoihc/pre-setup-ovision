@@ -8,8 +8,12 @@ import (
 	"time"
 )
 
-func NewLogger(filename string) *Logger {
-	return &Logger{filename: filename}
+func NewLogger(filename string, viewTime bool) *Logger {
+	data := Logger{
+		filename: filename,
+		viewTime: viewTime,
+	}
+	return &data
 }
 
 func (l *Logger) Log(text string) error {
@@ -19,9 +23,18 @@ func (l *Logger) Log(text string) error {
 	}
 	defer file.Close()
 
-	_, err = file.WriteString(time.Now().Format("2006-01-02 15:04:05") + " - " + text + "\n")
-	if err != nil {
-		return fmt.Errorf("не удалось записать в лог-файл: %w", err)
+	if l.viewTime {
+		_, err = file.WriteString(time.Now().Format("2006-01-02 15:04:05") + " - " + text + "\n")
+		if err != nil {
+			return fmt.Errorf("не удалось записать в лог-файл: %w", err)
+		}
+	}
+
+	if !l.viewTime {
+		_, err = file.WriteString(text + "\n")
+		if err != nil {
+			return fmt.Errorf("не удалось записать в лог-файл: %w", err)
+		}
 	}
 
 	return nil
