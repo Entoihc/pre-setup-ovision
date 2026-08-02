@@ -43,10 +43,10 @@
 		"initSeed": {
 			"action": false
 		},
-		"downloadInfoFile": {
-			"action": false,
-			"pathDirInfoFile": "./info"
-		},
+		// "downloadInfoFile": {
+		// 	"action": false,
+		// 	"pathDirInfoFile": "./info"
+		// },
 		"activateLicense": {
 			"action": false,
 			"online": true,
@@ -58,7 +58,7 @@
 			"pathDirCert": "./csr"
 		},
 		"uploadCert": {
-			"action": false,
+			"action": true,
 			"pathDirCert": "./certs"
 		},
 		"setOpenVPNParameters": {
@@ -87,7 +87,8 @@
 	},
 	"path":{
 		"pathListDevices": "./list-devices.txt",
-		"pathLogFile": "./log.log"
+		"pathLogFile": "./log.log",
+		"pathOpenSSL": "/opt/cryptopack4/bin/openssl"
 	},
 	"consumer": {
 		"Name": "t2",

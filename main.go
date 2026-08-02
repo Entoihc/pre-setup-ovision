@@ -165,6 +165,7 @@ func main() {
 		err := checkPassword(ctx, client, baseURL, &creds)
 		if err != nil {
 			logger.Log(fmt.Sprintf("Ошибка проверки пароля - %s", err))
+			break
 		}
 
 		tokenAuth, err := login(ctx, client, baseURL, creds.Username, creds.Password)
@@ -306,12 +307,18 @@ func main() {
 			logger.Log("Активация СКЗИ")
 			online := gjson.Get(configJSON, "allAction.activateLicense.online").Bool()
 
-			if 
-			logger.Log("Активация онлайн лицензии СКЗИ")
-			licenseCipt := gjson.Get(configJSON, "allAction.activateLicense.license").String()
-			err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
-			if err != nil {
-				logger.Log(fmt.Sprintf("Ошибка активации лицензии: %s", err))
+			if online {
+				logger.Log("Активация онлайн лицензии СКЗИ")
+
+				licenseCipt := gjson.Get(configJSON, "allAction.activateLicense.license").String()
+				err = activateLicenseOnline(ctx, client, baseURL, tokenAuth.AccessToken, licenseCipt)
+				if err != nil {
+					logger.Log(fmt.Sprintf("Ошибка активации лицензии: %s", err))
+				}
+			}
+
+			if !online {
+				logger.Log("Активация оффлайн лицензии СКЗИ пока не готова")
 			}
 		}
 
@@ -337,7 +344,53 @@ func main() {
 			}
 		}
 
+		for {
+			if uploadCertAction {
+				logger.Log("Загрузка сертификата для OpenVPN")
+				pathDirCert := gjson.Get(configJSON, "allAction.uploadCert.pathDirCert").String()
+
+				certs, err := readCertsCommonName(pathDirCert, gjson.Get(configJSON, "path.pathOpenSSL").String())
+				if err != nil {
+					logger.Log(fmt.Sprintf("Ошибка чтения папки с сертификатами - %s", err))
+					break
+				}
+
+				cert, err := findCertByCommonName(certs, device.CommonName)
+				if err != nil {
+					logger.Log(fmt.Sprintf("Ошибка поиска подходящего сертификата - %s", err))
+					break
+				}
+
+				_, err = uploadCaCertificate(ctx, client, baseURL, tokenAuth.AccessToken, cert)
+				if err != nil {
+					logger.Log(fmt.Sprintf("Ошибка загрузки сертификата: %s", err))
+					break
+				}
+			}
+		}
+
 		output.Log(fmt.Sprintf("%s,%s,%s,%s,%s,%s", baseURL.host, device.Mac, device.Name, device.NumDote, device.CommonName, device.Serial))
+	}
+
+	if setOpenVPNParametersAction {
+		logger.Log("Установка параметров OpenVPN")
+
+
+		ip := gjson.Get(json, "openvpn.OpenVpnAddress.0.ip").String()
+		port := gjson.Get(json, "openvpn.OpenVpnAddress.0.port").Int()
+		protocol := gjson.Get(json, "openvpn.Protocol").String()
+		tunMTU := gjson.Get(json, "openvpn.TunMTU").String()
+		crlVerify := gjson.Get(json, "openvpn.CrlVerify").Bool()
+		
+		OpenVpnAddress := OpenVpnAddress{
+			IP:  gjson.Get(configJSON, "allAction.setOpenVPNParameters.openvpn.OpenVpnAddress.ip[]").String(),
+		}
+
+		OpenVpnParametrs := OpenVpnParametrs{
+			Addresses:= 
+		}
+
+		_, err = setOpenVpnParametrs(ctx, client, baseURL, tokenAuth.AccessToken, OpenVpnParametrs)
 	}
 
 	return
