@@ -5,8 +5,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"time"
 )
+
+func PowerOff(baseURL Url) error {
+	cmd := exec.Command("ssh", "-o", " StrictHostKeyChecking=no", "-i", "~/.ssh/id_rsa", "root@"+baseURL.host, "poweroff")
+	cmd.Run()
+	return nil
+}
 
 func NewLogger(filename string, viewTime bool) *Logger {
 	data := Logger{

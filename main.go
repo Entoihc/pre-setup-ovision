@@ -153,6 +153,11 @@ func main() {
 		fmt.Println("setStunnelParameters")
 	}
 
+	poweroffAction := gjson.Get(configJSON, "allAction.poweroff.action").Bool()
+	if poweroffAction {
+		fmt.Println("poweroff")
+	}
+
 	//
 	// По каждому устройству выполняются действия указанные в конфиге
 	//
@@ -165,35 +170,35 @@ func main() {
 		err := checkPassword(ctx, client, baseURL, &creds)
 		if err != nil {
 			logger.Log(fmt.Sprintf("Ошибка проверки пароля - %s", err))
-			break
+			// continue
 		}
 
 		tokenAuth, err := login(ctx, client, baseURL, creds.Username, creds.Password)
 		if err != nil {
 			logger.Log(fmt.Sprintf("Ошибка авторизации - %s", err))
-			continue
-		}
+			// continue
+		} else {
+			err = refreshTokens(ctx, client, baseURL, tokenAuth)
+			if err != nil {
+				logger.Log(fmt.Sprintf("Ошибка обновления токена - %s", err))
+			}
 
-		err = refreshTokens(ctx, client, baseURL, tokenAuth)
-		if err != nil {
-			logger.Log(fmt.Sprintf("Ошибка обновления токена - %s", err))
-		}
+			err = getInfoDevice(ctx, client, baseURL, tokenAuth.AccessToken, &device)
+			if err != nil {
+				logger.Log(fmt.Sprintf("Не удалось получить mac-адрес девайса - %s", err))
+			}
 
-		err = getInfoDevice(ctx, client, baseURL, tokenAuth.AccessToken, &device)
-		if err != nil {
-			logger.Log(fmt.Sprintf("Не удалось получить mac-адрес девайса - %s", err))
-		}
+			err = getDeviceName(&shopper, &device)
+			if err != nil {
+				logger.Log(fmt.Sprintf("Не удалось получить записать информацию девайса - %s", err))
+			}
 
-		err = getDeviceName(&shopper, &device)
-		if err != nil {
-			logger.Log(fmt.Sprintf("Не удалось получить записать информацию девайса - %s", err))
-		}
+			logger.Log(fmt.Sprintf("MAC:%s, Name:%s, CN:%s", device.Mac, device.Name, device.CommonName))
 
-		logger.Log(fmt.Sprintf("MAC:%s, Name:%s, CN:%s", device.Mac, device.Name, device.CommonName))
-
-		err = refreshTokens(ctx, client, baseURL, tokenAuth)
-		if err != nil {
-			logger.Log(fmt.Sprintf("Ошибка обновления токена - %s", err))
+			err = refreshTokens(ctx, client, baseURL, tokenAuth)
+			if err != nil {
+				logger.Log(fmt.Sprintf("Ошибка обновления токена - %s", err))
+			}
 		}
 
 		if readInstalledServiceAction {
@@ -344,72 +349,61 @@ func main() {
 			}
 		}
 
-		for {
-			if uploadCertAction {
-				logger.Log("Загрузка сертификата для OpenVPN")
-				pathDirCert := gjson.Get(configJSON, "allAction.uploadCert.pathDirCert").String()
+		// for {
+		// 	if uploadCertAction {
+		// 		logger.Log("Загрузка сертификата для OpenVPN")
+		// 		pathDirCert := gjson.Get(configJSON, "allAction.uploadCert.pathDirCert").String()
 
-				certs, err := readCertsCommonName(pathDirCert, gjson.Get(configJSON, "path.pathOpenSSL").String())
-				if err != nil {
-					logger.Log(fmt.Sprintf("Ошибка чтения папки с сертификатами - %s", err))
-					break
-				}
+		// 		certs, err := readCertsCommonName(pathDirCert, gjson.Get(configJSON, "path.pathOpenSSL").String())
+		// 		if err != nil {
+		// 			logger.Log(fmt.Sprintf("Ошибка чтения папки с сертификатами - %s", err))
+		// 			break
+		// 		}
 
-				cert, err := findCertByCommonName(certs, device.CommonName)
-				if err != nil {
-					logger.Log(fmt.Sprintf("Ошибка поиска подходящего сертификата - %s", err))
-					break
-				}
+		// 		cert, err := findCertByCommonName(certs, device.CommonName)
+		// 		if err != nil {
+		// 			logger.Log(fmt.Sprintf("Ошибка поиска подходящего сертификата - %s", err))
+		// 			break
+		// 		}
 
-				_, err = uploadCaCertificate(ctx, client, baseURL, tokenAuth.AccessToken, cert)
-				if err != nil {
-					logger.Log(fmt.Sprintf("Ошибка загрузки сертификата: %s", err))
-					break
-				}
+		// 		_, err = uploadCaCertificate(ctx, client, baseURL, tokenAuth.AccessToken, cert)
+		// 		if err != nil {
+		// 			logger.Log(fmt.Sprintf("Ошибка загрузки сертификата: %s", err))
+		// 			break
+		// 		}
+		// 	}
+		// 	break
+		// }
+
+		// if setOpenVPNParametersAction {
+		// 	logger.Log("Установка параметров OpenVPN")
+
+		// 	ip := gjson.Get(json, "openvpn.OpenVpnAddress.0.ip").String()
+		// 	port := gjson.Get(json, "openvpn.OpenVpnAddress.0.port").Int()
+		// 	protocol := gjson.Get(json, "openvpn.Protocol").String()
+		// 	tunMTU := gjson.Get(json, "openvpn.TunMTU").String()
+		// 	crlVerify := gjson.Get(json, "openvpn.CrlVerify").Bool()
+
+		// 	OpenVpnAddress := OpenVpnAddress{
+		// 		IP:  gjson.Get(configJSON, "allAction.setOpenVPNParameters.openvpn.OpenVpnAddress.ip[]").String(),
+		// 	}
+
+		// 	OpenVpnParametrs := OpenVpnParametrs{
+		// 		Addresses:=
+		// 	}
+
+		// 	_, err = setOpenVpnParametrs(ctx, client, baseURL, tokenAuth.AccessToken, OpenVpnParametrs)
+		// }
+
+		if poweroffAction {
+			logger.Log("Выключение устройства")
+			err = PowerOff(baseURL)
+			if err != nil {
+				logger.Log("Не удалось выключить устройство")
 			}
 		}
-
 		output.Log(fmt.Sprintf("%s,%s,%s,%s,%s,%s", baseURL.host, device.Mac, device.Name, device.NumDote, device.CommonName, device.Serial))
-	}
-
-	if setOpenVPNParametersAction {
-		logger.Log("Установка параметров OpenVPN")
-
-
-		ip := gjson.Get(json, "openvpn.OpenVpnAddress.0.ip").String()
-		port := gjson.Get(json, "openvpn.OpenVpnAddress.0.port").Int()
-		protocol := gjson.Get(json, "openvpn.Protocol").String()
-		tunMTU := gjson.Get(json, "openvpn.TunMTU").String()
-		crlVerify := gjson.Get(json, "openvpn.CrlVerify").Bool()
-		
-		OpenVpnAddress := OpenVpnAddress{
-			IP:  gjson.Get(configJSON, "allAction.setOpenVPNParameters.openvpn.OpenVpnAddress.ip[]").String(),
-		}
-
-		OpenVpnParametrs := OpenVpnParametrs{
-			Addresses:= 
-		}
-
-		_, err = setOpenVpnParametrs(ctx, client, baseURL, tokenAuth.AccessToken, OpenVpnParametrs)
 	}
 
 	return
 }
-
-// payloadOpenVPNParameters := OpenVpnParametrs{
-// 	Addresses: []OpenVpnAddress{
-// 		{
-// 			IP:   "192.168.1.100",
-// 			Port: 1194,
-// 		},
-// 	},
-// 	TunMTU:    1500,
-// 	Protocol:  "tcp",
-// 	CrlVerify: false,
-// }
-
-// _, err = setOpenVpnParametrs(ctx, client, baseURL, tokenAuth.AccessToken, payloadOpenVPNParameters)
-// if err != nil {
-// 	fmt.Printf("Ошибка установки параметров OpenVPN: %v\n", err)
-// 	return
-// }
